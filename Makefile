@@ -1,15 +1,10 @@
-.PHONY: tools-generate-csv-system tools-generate-csv-bank tools-generate-csv
-
-tools-generate-csv-system:
-	echo "generate-csv-system"
-	go run ./cmd/tools.go --action-type=system
-
-tools-generate-csv-bank:
-	echo "generate-csv-bank ${bank-name}"
-	go run ./cmd/tools.go --action-type=bank --bank-name=${bank-name}
+.PHONY: tools-generate-csv reconcile
 
 
 tools-generate-csv:
 	echo "generate-csv"
 	go run ./cmd/tools.go
 
+reconcile:
+	echo "reconcile system path ${system}, bank path ${bank}"
+	go run ./cmd/reconcile.go --dir-system=${system} --dir-bank=${bank}
