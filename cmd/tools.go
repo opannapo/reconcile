@@ -6,31 +6,36 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"reconcile/entity"
 	"time"
 )
 
 func main() {
-	dirPath := "sample-data"
-	err := os.MkdirAll(dirPath, os.ModePerm)
-	if err != nil {
-		fmt.Println("Gagal membuat direktori:", err)
-		return
-	}
+	dirPathSystem := "sample-data/system"
+	dirPathBank := "sample-data/bank"
+	_ = os.MkdirAll(dirPathSystem, os.ModePerm)
+	_ = os.MkdirAll(dirPathBank, os.ModePerm)
 
-	_ = os.MkdirAll(dirPath, os.ModePerm)
+	systemHeaders := []string{"TrxID", "Amount", "TransactionTime"}
+	bankHeaders := []string{"UniqueID", "Amount", "Date"}
 
 	//generate master system transaction
-	generateCSV[entity.SystemTransaction](filepath.Join(dirPath, "system.csv"), "2006-01-02T15:04:05", 100)
+	generateCSV(Option{Headers: systemHeaders, Filename: filepath.Join(dirPathSystem, "system.csv"), DateFormat: "2006-01-02T15:04:05", NumRows: 100})
 
 	//generate bank transaction
-	generateCSV[entity.SystemTransaction](filepath.Join(dirPath, "bank_1.csv"), "2006-01-02", 20)
-	generateCSV[entity.SystemTransaction](filepath.Join(dirPath, "bank_2.csv"), "2006-01-02", 30)
-	generateCSV[entity.SystemTransaction](filepath.Join(dirPath, "bank_3.csv"), "2006-01-02", 70)
+	generateCSV(Option{Headers: bankHeaders, Filename: filepath.Join(dirPathBank, "bank_1.csv"), DateFormat: "2006-01-02", NumRows: 20})
+	generateCSV(Option{Headers: bankHeaders, Filename: filepath.Join(dirPathBank, "bank_2.csv"), DateFormat: "2006-01-02", NumRows: 30})
+	generateCSV(Option{Headers: bankHeaders, Filename: filepath.Join(dirPathBank, "bank_3.csv"), DateFormat: "2006-01-02", NumRows: 70})
 }
 
-func generateCSV[T entity.Transaction](filename string, dateFormat string, numRows int) (sysDataResult []T) {
-	file, err := os.Create(filename)
+type Option struct {
+	Headers    []string
+	Filename   string
+	DateFormat string
+	NumRows    int
+}
+
+func generateCSV(opt Option) {
+	file, err := os.Create(opt.Filename)
 	if err != nil {
 		fmt.Println("Error creating system transaction file:", err)
 		return
@@ -40,16 +45,12 @@ func generateCSV[T entity.Transaction](filename string, dateFormat string, numRo
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	writer.Write([]string{"TrxID", "Amount", "TransactionTime"})
-	for i := 0; i < numRows; i++ {
-		var t T
+	writer.Write(opt.Headers)
+	for i := 0; i < opt.NumRows; i++ {
 		trxID := fmt.Sprintf("SYS-%06d", i+1)
 		amount := rand.Float64() * 100
 		date := time.Now().AddDate(0, 0, -rand.Intn(10))
-		t.Parse(trxID, amount, date)
-		sysDataResult = append(sysDataResult, t)
-
-		writer.Write([]string{trxID, fmt.Sprintf("%.1f", amount), date.Format(dateFormat)})
+		writer.Write([]string{trxID, fmt.Sprintf("%.1f", amount), date.Format(opt.DateFormat)})
 	}
 
 	return
