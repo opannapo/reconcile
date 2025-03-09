@@ -18,12 +18,12 @@ func main() {
 
 	//generate master system transaction
 	generateCSV(Option{
-		SystemFilename: filepath.Join(dirPathSystem, "system.csv"),
+		SystemFilename: filepath.Join(dirPathSystem, "SYSTEM.csv"),
 		NumRows:        100,
 		BankFilenames: [][]string{
-			{filepath.Join(dirPathBank, "bank_1.csv"), "BCA"},
-			{filepath.Join(dirPathBank, "bank_2.csv"), "MANDIRI"},
-			{filepath.Join(dirPathBank, "bank_3.csv"), "BRI"},
+			{filepath.Join(dirPathBank, "BCA.csv"), "BCA"},
+			{filepath.Join(dirPathBank, "MANDIRI.csv"), "MANDIRI"},
+			{filepath.Join(dirPathBank, "BRI.csv"), "BRI"},
 		},
 	})
 }
@@ -80,7 +80,7 @@ func generateCSV(opt Option) {
 	for i := 0; i < opt.NumRows; i++ {
 		trxID := fmt.Sprintf("SYS%06d", i+1)
 		amount := rand.Float64() * 100
-		date := time.Now().AddDate(0, 0, -rand.Intn(10))
+		date := time.Now().AddDate(0, -rand.Intn(12), -rand.Intn(10))
 		txType := sysTxTypes[rand.Intn(len(sysTxTypes))]
 		master = append(master, Master{
 			ID:     trxID,

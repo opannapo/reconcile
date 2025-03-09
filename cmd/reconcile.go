@@ -1,64 +1,78 @@
 package main
 
 import (
-	"encoding/csv"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"reconcile/entity"
-	"strconv"
 	"time"
 )
 
 func main() {
-	var dirSystem string
-	var dirBank string
+	var dirSystem, dirBank, startDate, endDate string
 	flag.StringVar(&dirSystem, "dir-system", "", "Path Directory of CSV system file")
 	flag.StringVar(&dirBank, "dir-bank", "", "Path Directory of CSV bank file")
+	flag.StringVar(&startDate, "start-date", "", "start-date = 2025-03-09")
+	flag.StringVar(&endDate, "end-date", "", "end-date = 2025-03-09")
 
 	// Parse flag dari command line
 	flag.Parse()
-	if dirSystem == "" || dirBank == "" {
-		log.Panic("dir-system & dir-bank required")
+	if dirSystem == "" || dirBank == "" || startDate == "" || endDate == "" {
+		log.Panic("Option dir-system , dir-bank , start-date , end-date required")
+	}
+	//validate date range
+
+	//parse transaction system
+	layoutDateOnly := "2006-01-02"
+	tStart, err := time.Parse(layoutDateOnly, startDate)
+	if err != nil {
+		panic(err)
+	}
+	tEnd, err := time.Parse(layoutDateOnly, endDate)
+	if err != nil {
+		panic(err)
+	}
+	if tEnd.Before(tStart) {
+		panic(fmt.Sprintf("invalid date range %s-%s", tStart, tEnd))
 	}
 
-	log.Println("dirSystem", dirSystem)
-	log.Println("dirBank", dirBank)
-
-	_, err := parseCSVSystem(dirSystem+"/system.csv", "2006-01-02T15:04:05")
+	//system
+	filesSystem, err := os.ReadDir(dirSystem)
+	if err != nil {
+		fmt.Println("Error read direktori:", err)
+		return
+	}
+	tSys := entity.Wrapper{TransactionType: "system", DateRange: []time.Time{tStart, tEnd}}
+	tSysSlice, err := tSys.ParseToSlice(dirSystem + "/" + filesSystem[0].Name())
 	if err != nil {
 		log.Panic(err)
 	}
-
-}
-
-func parseCSVSystem(filePath string, dateFormat string) (result []entity.SystemTransaction, err error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	reader := csv.NewReader(file)
-	rows, err := reader.ReadAll()
-	if err != nil {
-		return nil, err
+	for i, transaction := range tSysSlice {
+		log.Println(i, ", data -> ", transaction)
 	}
 
-	for _, row := range rows[1:] {
-		ID := row[0]
-		amount, _ := strconv.ParseFloat(row[1], 64)
-		date, _ := time.Parse(dateFormat, row[2])
-		t := entity.SystemTransaction{
-			TrxID:           ID,
-			Amount:          amount,
-			TransactionTime: date,
+	//bank
+	bankTxMaps := map[string][]entity.Transaction{}
+	filesBank, err := os.ReadDir(dirBank)
+	if err != nil {
+		fmt.Println("Error read direktori:", err)
+		return
+	}
+
+	for _, file := range filesBank {
+		bankFileName := file.Name()
+		tBank := entity.Wrapper{TransactionType: "bank", DateRange: []time.Time{tStart, tEnd}}
+		tBankSlice, err := tBank.ParseToSlice(dirBank + "/" + bankFileName)
+		if err != nil {
+			log.Panic(err)
 		}
-		result = append(result, t)
+		bankTxMaps[bankFileName] = tBankSlice
+		for i, transaction := range bankTxMaps[bankFileName] {
+			log.Println(i, ", data bank ", bankFileName, " -> ", transaction)
+		}
 	}
 
-	return result, nil
 }
 
 func findNotMatching(mainArray []int, arrays ...[]int) map[string][]int {
