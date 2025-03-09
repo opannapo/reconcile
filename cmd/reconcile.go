@@ -21,14 +21,12 @@ func main() {
 	flag.StringVar(&startDate, "start-date", "", "start-date = 2025-03-09")
 	flag.StringVar(&endDate, "end-date", "", "end-date = 2025-03-09")
 
-	// Parse flag dari command line
 	flag.Parse()
 	if dirSystem == "" || dirBank == "" || startDate == "" || endDate == "" {
 		log.Panic("Option dir-system , dir-bank , start-date , end-date required")
 	}
-	//validate date range
 
-	//parse transaction system
+	//validate date range
 	layoutDateOnly := "2006-01-02"
 	tStart, err := time.Parse(layoutDateOnly, startDate)
 	if err != nil {

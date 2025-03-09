@@ -19,7 +19,7 @@ func main() {
 	//generate master system transaction
 	generateCSV(Option{
 		SystemFilename: filepath.Join(dirPathSystem, "SYSTEM.csv"),
-		NumRows:        10,
+		NumRows:        1000,
 		BankFilenames: [][]string{
 			{filepath.Join(dirPathBank, "BCA.csv"), "BCA"},
 			{filepath.Join(dirPathBank, "MANDIRI.csv"), "MANDIRI"},
