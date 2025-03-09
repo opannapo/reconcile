@@ -49,6 +49,9 @@ make reconcile system=/home/opannapo/PROJECT-CODE/PRIB/GIT/reconcile/sample-data
 
 
 #
+# Demo
+[Screencast Output - Tools Generate & Generate Mismatch .webm](https://github.com/user-attachments/assets/9089edc8-c19b-4fea-bcfc-4ba03d104971)
+
 
 ## Specs of the Development Laptop
 ```bash
