@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"reconcile/entity"
+	"sync"
 	"time"
 )
 
@@ -37,24 +38,59 @@ func main() {
 		panic(fmt.Sprintf("invalid date range %s-%s", tStart, tEnd))
 	}
 
-	//system
-	filesSystem, err := os.ReadDir(dirSystem)
+	wg := sync.WaitGroup{}
+
+	var tSysSlice map[string]entity.Transaction
+	wg.Add(1) //system
+	go func() {
+		tSysSlice = parsingSystemData(dirSystem, tStart, tEnd, &wg)
+	}()
+
+	var bankTxMaps map[string]map[string]entity.Transaction
+	wg.Add(1) //banmk
+	go func() {
+		bankTxMaps = parsingBankData(dirBank, tStart, tEnd, &wg)
+	}()
+
+	wg.Wait()
+
+	for i, transaction := range tSysSlice {
+		log.Println(i, ", system -> ", transaction)
+	}
+
+	for i, bm := range bankTxMaps {
+		for ii, transaction := range bm {
+			log.Println("bank file ", i, ", data bank ", ii, transaction, " -> ", transaction)
+		}
+	}
+
+	findNotMatchingTx(tSysSlice, bankTxMaps)
+	log.Println("completed")
+}
+
+func parsingSystemData(dir string, tStart, tEnd time.Time, wg *sync.WaitGroup) (tSysSlice map[string]entity.Transaction) {
+	defer wg.Done()
+
+	filesSystem, err := os.ReadDir(dir)
 	if err != nil {
 		fmt.Println("Error read direktori:", err)
 		return
 	}
 	tSys := entity.Wrapper{TransactionType: "system", DateRange: []time.Time{tStart, tEnd}}
-	tSysSlice, err := tSys.ParseToSlice(dirSystem + "/" + filesSystem[0].Name())
+	tSysSlice, err = tSys.ParseToSlice(dir + "/" + filesSystem[0].Name())
 	if err != nil {
 		log.Panic(err)
 	}
-	for i, transaction := range tSysSlice {
-		log.Println(i, ", data -> ", transaction)
-	}
 
-	//bank
-	bankTxMaps := map[string][]entity.Transaction{}
-	filesBank, err := os.ReadDir(dirBank)
+	return
+}
+
+func parsingBankData(dir string, tStart, tEnd time.Time, wg *sync.WaitGroup) (bankTxMaps map[string]map[string]entity.Transaction) {
+	defer wg.Done()
+
+	bankTxMaps = map[string]map[string]entity.Transaction{}
+
+	filesBank, err := os.ReadDir(dir)
 	if err != nil {
 		fmt.Println("Error read direktori:", err)
 		return
@@ -63,16 +99,38 @@ func main() {
 	for _, file := range filesBank {
 		bankFileName := file.Name()
 		tBank := entity.Wrapper{TransactionType: "bank", DateRange: []time.Time{tStart, tEnd}}
-		tBankSlice, err := tBank.ParseToSlice(dirBank + "/" + bankFileName)
+		tBankSlice, err := tBank.ParseToSlice(dir + "/" + bankFileName)
 		if err != nil {
 			log.Panic(err)
 		}
+
 		bankTxMaps[bankFileName] = tBankSlice
-		for i, transaction := range bankTxMaps[bankFileName] {
-			log.Println(i, ", data bank ", bankFileName, " -> ", transaction)
+	}
+
+	return
+}
+
+func findNotMatchingTx(sysMap map[string]entity.Transaction, bankMapArrays map[string]map[string]entity.Transaction) (sysTxResult map[string]entity.Transaction, bankTxResult map[string]map[string]entity.Transaction) {
+	scanCount := 0
+	for s, _ := range sysMap {
+		scanCount++
+		for keyBankFile, arr := range bankMapArrays {
+			for keyOnSelectedBank, _ := range arr {
+				log.Println("find system key", s, "on bank file", keyBankFile, "keyOnSelectedBank", keyOnSelectedBank, "scanCount", scanCount, "len(sysMap)", len(sysMap))
+				if keyOnSelectedBank == s {
+					log.Println("find system key", s, "on bank file", keyBankFile, "keyOnSelectedBank", keyOnSelectedBank, "MATCH")
+					delete(sysMap, s)
+					delete(arr, keyOnSelectedBank)
+				}
+			}
+			log.Println("OnProgress current data sysMap count", len(sysMap))
 		}
 	}
 
+	log.Println("Final current data sysMap", sysMap)
+	log.Println("Final current data bankMapArrays", bankMapArrays)
+
+	return
 }
 
 func findNotMatching(mainArray []int, arrays ...[]int) map[string][]int {

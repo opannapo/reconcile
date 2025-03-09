@@ -20,7 +20,9 @@ type Wrapper struct {
 	DateRange       []time.Time
 }
 
-func (w Wrapper) ParseToSlice(filePath string) (result []Transaction, err error) {
+func (w Wrapper) ParseToSlice(filePath string) (result map[string]Transaction, err error) {
+	result = map[string]Transaction{}
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return
@@ -48,17 +50,19 @@ func (w Wrapper) ParseToSlice(filePath string) (result []Transaction, err error)
 			date, _ = time.Parse("2006-01-02T15:04:05", row[3])
 			timeNormalized, _ = time.Parse("2006-01-02T15:04:05", row[3])
 		} else {
-			date, _ = time.Parse("2006-01-02", row[2])
+			date, err = time.Parse("2006-01-02", row[2])
+			timeNormalized, _ = time.Parse("2006-01-02", row[2])
 		}
 
 		if (date.After(w.DateRange[0]) || date.Equal(w.DateRange[0])) && (date.Before(w.DateRange[1]) || date.Equal(w.DateRange[1])) {
 			//normalize date format to general format 2006-01-02
-			result = append(result, Transaction{
-				Key:    fmt.Sprintf("%s@%f", timeNormalized.Format(layoutDateOnly), amount),
+			key := fmt.Sprintf("%s|%f", timeNormalized.Format(layoutDateOnly), amount)
+			result[key] = Transaction{
+				Key:    key,
 				ID:     ID,
 				Amount: amount,
 				Date:   date,
-			})
+			}
 		}
 	}
 

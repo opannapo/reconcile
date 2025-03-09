@@ -19,7 +19,7 @@ func main() {
 	//generate master system transaction
 	generateCSV(Option{
 		SystemFilename: filepath.Join(dirPathSystem, "SYSTEM.csv"),
-		NumRows:        100,
+		NumRows:        10,
 		BankFilenames: [][]string{
 			{filepath.Join(dirPathBank, "BCA.csv"), "BCA"},
 			{filepath.Join(dirPathBank, "MANDIRI.csv"), "MANDIRI"},
@@ -91,7 +91,7 @@ func generateCSV(opt Option) {
 
 		writer.Write([]string{
 			trxID,
-			fmt.Sprintf("%.1f", amount),
+			fmt.Sprintf("%.3f", amount),
 			txType,
 			date.Format("2006-01-02T15:04:05"),
 		})
@@ -102,8 +102,8 @@ func generateCSV(opt Option) {
 	log.Println("bankSizes", bankSizes)
 	start := 0
 	for i, size := range bankSizes {
-		end := start + size - 1
-		fmt.Printf("Bank %d len=%d. Start %d - end %d\n", i, size, start, end)
+		end := start + size
+		fmt.Printf("Bank %s len=%d. Start %d - end %d\n", opt.BankFilenames[i][1], size, start, end)
 
 		partMaster := master[start:end]
 		writersBank[i].Write(bankHeaders)
@@ -116,11 +116,11 @@ func generateCSV(opt Option) {
 			}
 			writersBank[i].Write([]string{
 				bankName,
-				fmt.Sprintf("%f", amount),
+				fmt.Sprintf("%.3f", amount),
 				date,
 			})
 		}
-		start = end + 1
+		start = end
 	}
 
 	return
