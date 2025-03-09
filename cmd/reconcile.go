@@ -57,23 +57,23 @@ func main() {
 
 	wg.Wait()
 
-	for i, transaction := range tSysSlice {
+	/*for i, transaction := range tSysSlice {
 		log.Println(i, ", system -> ", transaction)
-	}
+	}*/
 
-	for i, bm := range bankTxMaps {
+	/*for i, bm := range bankTxMaps {
 		for ii, transaction := range bm {
 			log.Println("bank file ", i, ", data bank ", ii, transaction, " -> ", transaction)
 		}
-	}
+	}*/
 
 	mismatchesSysTxResult, mismatchesBankTxResult := findNotMatchingTx(tSysSlice, bankTxMaps)
 	if len(mismatchesSysTxResult) > 0 {
-		log.Println("mismatchesSysTxResult", mismatchesSysTxResult)
+		//log.Println("mismatchesSysTxResult", mismatchesSysTxResult)
 		generateReportMismatchesSys(mismatchesSysTxResult)
 	}
 	if len(mismatchesBankTxResult) > 0 {
-		log.Println("mismatchesBankTxResult", mismatchesBankTxResult)
+		//log.Println("mismatchesBankTxResult", mismatchesBankTxResult)
 		generateReportMismatchesBank(mismatchesBankTxResult)
 	}
 
@@ -126,10 +126,10 @@ func findNotMatchingTx(sysMap map[string]entity.Transaction, bankMapArrays map[s
 	scanCount := 0
 	for s, _ := range sysMap {
 		scanCount++
-		for keyBankFile, arr := range bankMapArrays {
+		for _, arr := range bankMapArrays {
 			for keyOnSelectedBank, _ := range arr {
 				if keyOnSelectedBank == s {
-					log.Println("find system key", s, "on bank file", keyBankFile, "keyOnSelectedBank", keyOnSelectedBank, "MATCH")
+					//log.Println("find system key", s, "on bank file", keyBankFile, "keyOnSelectedBank", keyOnSelectedBank, "MATCH")
 					delete(sysMap, s)
 					delete(arr, keyOnSelectedBank)
 				}
@@ -187,8 +187,8 @@ func generateReportMismatchesBank(mismatchesBankTxResult map[string]map[string]e
 		keyGroup = append(keyGroup, s)
 	}
 
-	for i, key := range keyGroup {
-		log.Println(i, key)
+	for _, key := range keyGroup {
+		//log.Println("Mismatch For Bank", key)
 		bankMap := []entity.Transaction{}
 		for s, tx := range mismatchesBankTxResult {
 			if s == key {
@@ -210,8 +210,8 @@ func generateReportMismatchesBank(mismatchesBankTxResult map[string]map[string]e
 
 		bankHeaders := []string{"UniqueID", "Amount", "Date"}
 		writer.Write(bankHeaders)
-		for i, transaction := range bankMap {
-			log.Println(i, transaction)
+		for _, transaction := range bankMap {
+			//log.Println(transaction)
 
 			amount := transaction.Amount
 			writer.Write([]string{
