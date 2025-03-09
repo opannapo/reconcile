@@ -1,10 +1,13 @@
 package main
 
 import (
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"os"
+	"path/filepath"
 	"reconcile/entity"
 	"sync"
 	"time"
@@ -64,7 +67,15 @@ func main() {
 		}
 	}
 
-	findNotMatchingTx(tSysSlice, bankTxMaps)
+	mismatchesSysTxResult, mismatchesBankTxResult := findNotMatchingTx(tSysSlice, bankTxMaps)
+	if len(mismatchesSysTxResult) > 0 {
+		log.Println("mismatchesSysTxResult", mismatchesSysTxResult)
+		generateReportMismatchesSys(mismatchesSysTxResult)
+	}
+	if len(mismatchesBankTxResult) > 0 {
+		log.Println("mismatchesBankTxResult", mismatchesBankTxResult)
+	}
+
 	log.Println("completed")
 }
 
@@ -110,64 +121,89 @@ func parsingBankData(dir string, tStart, tEnd time.Time, wg *sync.WaitGroup) (ba
 	return
 }
 
-func findNotMatchingTx(sysMap map[string]entity.Transaction, bankMapArrays map[string]map[string]entity.Transaction) (sysTxResult map[string]entity.Transaction, bankTxResult map[string]map[string]entity.Transaction) {
+func findNotMatchingTx(sysMap map[string]entity.Transaction, bankMapArrays map[string]map[string]entity.Transaction) (mismatchesSysTxResult map[string]entity.Transaction, mismatchesBankTxResult map[string]map[string]entity.Transaction) {
 	scanCount := 0
 	for s, _ := range sysMap {
 		scanCount++
 		for keyBankFile, arr := range bankMapArrays {
 			for keyOnSelectedBank, _ := range arr {
-				log.Println("find system key", s, "on bank file", keyBankFile, "keyOnSelectedBank", keyOnSelectedBank, "scanCount", scanCount, "len(sysMap)", len(sysMap))
 				if keyOnSelectedBank == s {
 					log.Println("find system key", s, "on bank file", keyBankFile, "keyOnSelectedBank", keyOnSelectedBank, "MATCH")
 					delete(sysMap, s)
 					delete(arr, keyOnSelectedBank)
 				}
 			}
-			log.Println("OnProgress current data sysMap count", len(sysMap))
 		}
 	}
 
-	log.Println("Final current data sysMap", sysMap)
-	log.Println("Final current data bankMapArrays", bankMapArrays)
+	//set data mismatchesSysTxResult
+	mismatchesSysTxResult = sysMap
+
+	//set data mismatchesBankTxResult
+	mismatchesBankTxResult = map[string]map[string]entity.Transaction{}
+	for keyBankFile, arr := range bankMapArrays {
+		mismatchesBankTxResult[keyBankFile] = arr
+	}
 
 	return
 }
 
-func findNotMatching(mainArray []int, arrays ...[]int) map[string][]int {
-	allOtherValues := make(map[int]bool)
-	for _, arr := range arrays {
-		for _, v := range arr {
-			allOtherValues[v] = true
+func generateReportMismatchesSys(mismatchesSysTxResult map[string]entity.Transaction) {
+	dirPathMismatches := "sample-data/mismatches"
+	_ = os.MkdirAll(dirPathMismatches, os.ModePerm)
+
+	filename := filepath.Join(dirPathMismatches, "MISMATCHES-SYSTEM.csv")
+	sysFile, _ := os.Create(filename)
+	defer sysFile.Close()
+	writer := csv.NewWriter(sysFile)
+	defer writer.Flush()
+
+	systemHeaders := []string{"TrxID", "Amount", "Type", "TransactionTime"}
+	writer.Write(systemHeaders)
+	for _, m := range mismatchesSysTxResult {
+		amount := m.Amount
+		txType := "CREDIT"
+		if amount < 0 {
+			txType = "DEBIT"
+			positiveNum := math.Abs(amount)
+			amount = positiveNum
 		}
+
+		writer.Write([]string{
+			m.ID,
+			fmt.Sprintf("%.3f", amount),
+			txType,
+			m.Date.String(),
+		})
 	}
-
-	mainNotMatch := []int{}
-	for _, v := range mainArray {
-		if !allOtherValues[v] {
-			mainNotMatch = append(mainNotMatch, v)
-		}
-	}
-
-	results := map[string][]int{"ArrayMain_not_match": mainNotMatch}
-
-	for i, arr := range arrays {
-		notMatch := []int{}
-		for _, v := range arr {
-			if !contains(mainArray, v) {
-				notMatch = append(notMatch, v)
-			}
-		}
-		results[fmt.Sprintf("Array%d_not_match", i+2)] = notMatch
-	}
-
-	return results
 }
 
-func contains(arr []int, target int) bool {
-	for _, v := range arr {
-		if v == target {
-			return true
+func generateReportMismatchesBank(mismatchesSysTxResult map[string]entity.Transaction) {
+	dirPathMismatches := "sample-data/mismatches"
+	_ = os.MkdirAll(dirPathMismatches, os.ModePerm)
+
+	filename := filepath.Join(dirPathMismatches, "MISMATCHES-SYSTEM.csv")
+	sysFile, _ := os.Create(filename)
+	defer sysFile.Close()
+	writer := csv.NewWriter(sysFile)
+	defer writer.Flush()
+
+	systemHeaders := []string{"TrxID", "Amount", "Type", "TransactionTime"}
+	writer.Write(systemHeaders)
+	for _, m := range mismatchesSysTxResult {
+		amount := m.Amount
+		txType := "CREDIT"
+		if amount < 0 {
+			txType = "DEBIT"
+			positiveNum := math.Abs(amount)
+			amount = positiveNum
 		}
+
+		writer.Write([]string{
+			m.ID,
+			fmt.Sprintf("%.3f", amount),
+			txType,
+			m.Date.String(),
+		})
 	}
-	return false
 }
