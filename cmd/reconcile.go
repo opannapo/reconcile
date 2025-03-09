@@ -74,6 +74,7 @@ func main() {
 	}
 	if len(mismatchesBankTxResult) > 0 {
 		log.Println("mismatchesBankTxResult", mismatchesBankTxResult)
+		generateReportMismatchesBank(mismatchesBankTxResult)
 	}
 
 	log.Println("completed")
@@ -142,7 +143,9 @@ func findNotMatchingTx(sysMap map[string]entity.Transaction, bankMapArrays map[s
 	//set data mismatchesBankTxResult
 	mismatchesBankTxResult = map[string]map[string]entity.Transaction{}
 	for keyBankFile, arr := range bankMapArrays {
-		mismatchesBankTxResult[keyBankFile] = arr
+		if len(bankMapArrays[keyBankFile]) > 0 {
+			mismatchesBankTxResult[keyBankFile] = arr
+		}
 	}
 
 	return
@@ -178,32 +181,44 @@ func generateReportMismatchesSys(mismatchesSysTxResult map[string]entity.Transac
 	}
 }
 
-func generateReportMismatchesBank(mismatchesSysTxResult map[string]entity.Transaction) {
-	dirPathMismatches := "sample-data/mismatches"
-	_ = os.MkdirAll(dirPathMismatches, os.ModePerm)
+func generateReportMismatchesBank(mismatchesBankTxResult map[string]map[string]entity.Transaction) {
+	keyGroup := []string{}
+	for s, _ := range mismatchesBankTxResult {
+		keyGroup = append(keyGroup, s)
+	}
 
-	filename := filepath.Join(dirPathMismatches, "MISMATCHES-SYSTEM.csv")
-	sysFile, _ := os.Create(filename)
-	defer sysFile.Close()
-	writer := csv.NewWriter(sysFile)
-	defer writer.Flush()
-
-	systemHeaders := []string{"TrxID", "Amount", "Type", "TransactionTime"}
-	writer.Write(systemHeaders)
-	for _, m := range mismatchesSysTxResult {
-		amount := m.Amount
-		txType := "CREDIT"
-		if amount < 0 {
-			txType = "DEBIT"
-			positiveNum := math.Abs(amount)
-			amount = positiveNum
+	for i, key := range keyGroup {
+		log.Println(i, key)
+		bankMap := []entity.Transaction{}
+		for s, tx := range mismatchesBankTxResult {
+			if s == key {
+				for _, transaction := range tx {
+					bankMap = append(bankMap, transaction)
+				}
+			}
 		}
 
-		writer.Write([]string{
-			m.ID,
-			fmt.Sprintf("%.3f", amount),
-			txType,
-			m.Date.String(),
-		})
+		dirPathMismatches := "sample-data/mismatches"
+		_ = os.MkdirAll(dirPathMismatches, os.ModePerm)
+
+		filename := filepath.Join(dirPathMismatches, fmt.Sprintf("MISMATCHES-%s.csv", key))
+		sysFile, _ := os.Create(filename)
+		defer sysFile.Close()
+
+		writer := csv.NewWriter(sysFile)
+		defer writer.Flush()
+
+		bankHeaders := []string{"UniqueID", "Amount", "Date"}
+		writer.Write(bankHeaders)
+		for i, transaction := range bankMap {
+			log.Println(i, transaction)
+
+			amount := transaction.Amount
+			writer.Write([]string{
+				transaction.ID,
+				fmt.Sprintf("%.3f", amount),
+				transaction.Date.String(),
+			})
+		}
 	}
 }
