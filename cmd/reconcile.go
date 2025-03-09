@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reconcile/entity"
+	"strings"
 	"sync"
 	"time"
 )
@@ -43,10 +44,12 @@ func main() {
 
 	wg := sync.WaitGroup{}
 
+	totalDataSystem := 0
 	var tSysSlice map[string]entity.Transaction
 	wg.Add(1) //system
 	go func() {
 		tSysSlice = parsingSystemData(dirSystem, tStart, tEnd, &wg)
+		totalDataSystem = len(tSysSlice)
 	}()
 
 	var bankTxMaps map[string]map[string]entity.Transaction
@@ -68,15 +71,29 @@ func main() {
 	}*/
 
 	mismatchesSysTxResult, mismatchesBankTxResult := findNotMatchingTx(tSysSlice, bankTxMaps)
+	var filePathResult string
+	var difAmount float64
 	if len(mismatchesSysTxResult) > 0 {
 		//log.Println("mismatchesSysTxResult", mismatchesSysTxResult)
-		generateReportMismatchesSys(mismatchesSysTxResult)
-	}
-	if len(mismatchesBankTxResult) > 0 {
-		//log.Println("mismatchesBankTxResult", mismatchesBankTxResult)
-		generateReportMismatchesBank(mismatchesBankTxResult)
+		filePathResult, difAmount = generateReportMismatchesSys(mismatchesSysTxResult)
 	}
 
+	var filesPathResult []string
+	if len(mismatchesBankTxResult) > 0 {
+		//log.Println("mismatchesBankTxResult", mismatchesBankTxResult)
+		filesPathResult = generateReportMismatchesBank(mismatchesBankTxResult)
+	}
+
+	result := `
+	Total Transaksi Di Proses : %d
+	Total System Mismatch : %d
+		Result Generated at : %s
+	Total Bank Mismatch : %d
+		Result Generated at : [ %+v ]
+	Total Selisih Transaksi %f
+
+`
+	fmt.Printf(result, totalDataSystem, len(mismatchesSysTxResult), filePathResult, len(mismatchesBankTxResult), strings.Join(filesPathResult, ","), difAmount)
 	log.Println("completed")
 }
 
@@ -151,7 +168,7 @@ func findNotMatchingTx(sysMap map[string]entity.Transaction, bankMapArrays map[s
 	return
 }
 
-func generateReportMismatchesSys(mismatchesSysTxResult map[string]entity.Transaction) {
+func generateReportMismatchesSys(mismatchesSysTxResult map[string]entity.Transaction) (filePathResult string, difAmount float64) {
 	dirPathMismatches := "sample-data/mismatches"
 	_ = os.MkdirAll(dirPathMismatches, os.ModePerm)
 
@@ -170,6 +187,9 @@ func generateReportMismatchesSys(mismatchesSysTxResult map[string]entity.Transac
 			txType = "DEBIT"
 			positiveNum := math.Abs(amount)
 			amount = positiveNum
+			difAmount -= positiveNum
+		} else {
+			difAmount += m.Amount
 		}
 
 		writer.Write([]string{
@@ -179,9 +199,12 @@ func generateReportMismatchesSys(mismatchesSysTxResult map[string]entity.Transac
 			m.Date.String(),
 		})
 	}
+
+	filePathResult = filename
+	return
 }
 
-func generateReportMismatchesBank(mismatchesBankTxResult map[string]map[string]entity.Transaction) {
+func generateReportMismatchesBank(mismatchesBankTxResult map[string]map[string]entity.Transaction) (filesPathResult []string) {
 	keyGroup := []string{}
 	for s, _ := range mismatchesBankTxResult {
 		keyGroup = append(keyGroup, s)
@@ -208,6 +231,8 @@ func generateReportMismatchesBank(mismatchesBankTxResult map[string]map[string]e
 		writer := csv.NewWriter(sysFile)
 		defer writer.Flush()
 
+		filesPathResult = append(filesPathResult, filename)
+
 		bankHeaders := []string{"UniqueID", "Amount", "Date"}
 		writer.Write(bankHeaders)
 		for _, transaction := range bankMap {
@@ -221,4 +246,6 @@ func generateReportMismatchesBank(mismatchesBankTxResult map[string]map[string]e
 			})
 		}
 	}
+
+	return
 }
